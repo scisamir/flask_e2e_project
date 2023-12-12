@@ -1,0 +1,41 @@
+<!-- app/templates/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+</head>
+<body class="bg-gray-200">
+
+<div class="container mx-auto my-8">
+    <h1 class="text-2xl font-bold mb-4">Mood Tracker</h1>
+
+    <form action="{{ url_for('log_mood') }}" method="post" class="max-w-sm mx-auto bg-white p-6 rounded shadow-md">
+        <label for="mood" class="block mb-2">Select your mood:</label>
+        <select name="mood" id="mood" class="border p-2 mb-4 w-full">
+            <option value="happy">Happy</option>
+            <option value="sad">Sad</option>
+            <option value="stressed">Stressed</option>
+        </select>
+
+        <label for="activities" class="block mb-2">Describe your activities:</label>
+        <textarea name="activities" id="activities" class="border p-2 mb-4 w-full" placeholder="What did you do today?"></textarea>
+
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2">Log Mood</button>
+    </form>
+
+    <div class="mt-8">
+        <h2 class="text-lg font-bold mb-4">Recent Mood Entries</h2>
+        <ul>
+            {% for entry in entries %}
+                <li class="mb-2">{{ entry.timestamp.strftime('%Y-%m-%d %H:%M') }} - {{ entry.mood }}: {{ entry.activities }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+</body>
+</html>
