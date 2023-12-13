@@ -10,31 +10,48 @@ from flask_login import (
     login_required,
     login_user,
     logout_user,
-    UserMixin,
 )
 from oauthlib.oauth2 import WebApplicationClient
 import requests
-from flask_sqlalchemy import SQLAlchemy
+from dotenv import load_dotenv
+import logging
+
+import sys
+
+# Assuming that this file (app.py) is in the 'app' directory
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
+from db.models import db, User, MoodEntry
+
+# Load enviroment variables
+load_dotenv()
 
 # Configuration
-GOOGLE_CLIENT_ID = '1034434692939-4lbfgvkauc66lru8hot205q9sa5965p2.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = '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'
+GOOGLE_CLIENT_ID = os.getenv("CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 GOOGLE_DISCOVERY_URL = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
 
 # Flask app setup
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
+app.secret_key = os.getenv("SECRET_KEY") or os.urandom(24)
 
-# app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root@/mysql?unix_socket=/cloudsql/flask-e2e-project:flask-e2e-project"
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///mood_tracker.db"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
+# Configure Flask logging
+app.logger.setLevel(logging.INFO)  # Set log level to INFO
+handler = logging.FileHandler('../logs/app.log')  # Log to a file
+app.logger.addHandler(handler)
+
+# db = SQLAlchemy(app)
+db.init_app(app)
 
 # User session management setup
 login_manager = LoginManager()
+# login_manager.init_app(current_app)
 login_manager.init_app(app)
 
 @login_manager.unauthorized_handler
@@ -44,26 +61,13 @@ def unauthorized():
 # OAuth2 client setup
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
-class User(db.Model, UserMixin):
-    id = db.Column(db.String(50), primary_key=True)
-    name = db.Column(db.String(100))
-    email = db.Column(db.String(100), unique=True)
-    profile_pic = db.Column(db.String(100))
-    mood_entries = db.relationship('MoodEntry', backref='user', lazy=True)
-
-class MoodEntry(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    mood = db.Column(db.String(10), nullable=False)
-    activities = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, server_default=db.func.now())
-    user_id = db.Column(db.String(50), db.ForeignKey('user.id'), nullable=False)
-
 with app.app_context():
     db.create_all()
 
 # Flask-Login helper to retrieve a user from our db
 @login_manager.user_loader
 def load_user(user_id):
+    app.logger.info('User Initialized')
     return User.query.get(user_id)
 
 @app.route("/")
@@ -90,7 +94,6 @@ def login():
         scope=["openid", "email", "profile"],
     )
     return redirect(request_uri)
-
 
 @app.route("/login/callback")
 def callback():
@@ -137,20 +140,22 @@ def callback():
     )
         db.session.add(user)
         db.session.commit()
+        app.logger.info('New user added to database successfully')
 
     # Begin user session by logging the user in
     login_user(user)
 
+    app.logger.info(f'User with {user.id} Authenticated successfully')
+
     # Send user back to homepage
     return redirect(url_for("index"))
-
 
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
+    app.logger.info('Logged out user successfully')
     return redirect(url_for("index"))
-
 
 def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
@@ -164,8 +169,14 @@ def log_mood():
     new_mood_entry = MoodEntry(mood=mood, activities=activities, user_id=current_user.id)
     db.session.add(new_mood_entry)
     db.session.commit()
+    app.logger.info('User mood added successfully')
 
     return redirect(url_for('index'))
+
+@app.errorhandler(500)
+def server_error(error):
+    app.logger.exception('An exception occurred during a request.')
+    return 'Internal Server Error', 500
 
 if __name__ == "__main__":
     app.run(ssl_context="adhoc")
