@@ -41,9 +41,13 @@ app.secret_key = os.getenv("SECRET_KEY") or os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Create a logs directory if it doesn't exist
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')
+os.makedirs(log_dir, exist_ok=True)
+
 # Configure Flask logging
 app.logger.setLevel(logging.INFO)  # Set log level to INFO
-handler = logging.FileHandler('../logs/app.log')  # Log to a file
+handler = logging.FileHandler(os.path.join(log_dir, 'app.log'))  # Log to a file
 app.logger.addHandler(handler)
 
 # db = SQLAlchemy(app)
@@ -145,7 +149,7 @@ def callback():
     # Begin user session by logging the user in
     login_user(user)
 
-    app.logger.info(f'User with {user.id} Authenticated successfully')
+    app.logger.info(f'User with ID: {user.id} Authenticated successfully')
 
     # Send user back to homepage
     return redirect(url_for("index"))
