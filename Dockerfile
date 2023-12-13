@@ -1,11 +1,13 @@
-FROM python:3.9
+FROM python:3-alpine
 
 WORKDIR /app
 
-COPY . .
+COPY requirements.txt ./
 
 RUN pip install -r requirements.txt
 
-ENV FLASK_APP=app/app.py
+COPY . .
+
+EXPOSE 5000
 
 CMD ["python", "app/app.py"]
