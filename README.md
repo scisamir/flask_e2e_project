@@ -40,13 +40,13 @@ The app should be started at `127.0.0.1:5000`
 1. Pull the image from docker
 
 ```
-docker pull scisamir/flask_e2e_project:v0.1
+docker pull scisamir/flask_e2e_project
 ```
 
 2. Run the image container
 
 ```
-docker run -p 5000:5000 scisamir/flask_e2e_project:v0.1
+docker run -p 5000:5000 scisamir/flask_e2e_project
 ```
 
 The app should be started at `127.0.0.1:5000`
