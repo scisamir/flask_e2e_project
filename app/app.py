@@ -14,7 +14,7 @@ from flask_login import (
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 from dotenv import load_dotenv
-# import logging
+import sentry_sdk
 
 import sys
 
@@ -34,6 +34,15 @@ GOOGLE_DISCOVERY_URL = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
 
+sentry_sdk.init(
+    dsn="https://21174c3602ec40d8d31c03c7dc54418a@o4506393825902592.ingest.sentry.io/4506393829834752",
+    traces_sample_rate=1.0,
+    profiles_sample_rate=1.0,
+    send_default_pii=True,
+)
+
+app = Flask(__name__)
+
 # Flask app setup
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or os.urandom(24)
@@ -41,21 +50,11 @@ app.secret_key = os.getenv("SECRET_KEY") or os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# # Create a logs directory if it doesn't exist
-# log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')
-# os.makedirs(log_dir, exist_ok=True)
-
-# # Configure Flask logging
-# app.logger.setLevel(logging.INFO)  # Set log level to INFO
-# handler = logging.FileHandler(os.path.join(log_dir, 'app.log'))  # Log to a file
-# app.logger.addHandler(handler)
-
 # db = SQLAlchemy(app)
 db.init_app(app)
 
 # User session management setup
 login_manager = LoginManager()
-# login_manager.init_app(current_app)
 login_manager.init_app(app)
 
 @login_manager.unauthorized_handler
@@ -71,7 +70,6 @@ with app.app_context():
 # Flask-Login helper to retrieve a user from our db
 @login_manager.user_loader
 def load_user(user_id):
-    # app.logger.info('User Initialized')
     return User.query.get(user_id)
 
 @app.route("/")
@@ -144,12 +142,9 @@ def callback():
     )
         db.session.add(user)
         db.session.commit()
-        # app.logger.info('New user added to database successfully')
 
     # Begin user session by logging the user in
     login_user(user)
-
-    # app.logger.info(f'User with ID: {user.id} Authenticated successfully')
 
     # Send user back to homepage
     return redirect(url_for("index"))
@@ -158,7 +153,6 @@ def callback():
 @login_required
 def logout():
     logout_user()
-    # app.logger.info('Logged out user successfully')
     return redirect(url_for("index"))
 
 def get_google_provider_cfg():
@@ -173,14 +167,9 @@ def log_mood():
     new_mood_entry = MoodEntry(mood=mood, activities=activities, user_id=current_user.id)
     db.session.add(new_mood_entry)
     db.session.commit()
-    # app.logger.info('User mood added successfully')
 
     return redirect(url_for('index'))
 
-# @app.errorhandler(500)
-# def server_error(error):
-#     app.logger.exception('An exception occurred during a request.')
-#     return 'Internal Server Error', 500
 
 if __name__ == "__main__":
     app.run(ssl_context="adhoc")
